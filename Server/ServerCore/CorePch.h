@@ -5,10 +5,9 @@
 // 별도의 CorePch를 생성
 
 #include "Types.h"
-#include "CoreGlobal.h"
+#include "CoreMacro.h"
 #include "CoreTLS.h"
 #include "CoreGlobal.h"
-#include "CoreMacro.h"
 
 #include <vector>
 #include <list>
@@ -18,5 +17,9 @@
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
+
+#include <windows.h>
 #include <iostream>
 using namespace std;
+
+#include "Lock.h"
