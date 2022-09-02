@@ -20,15 +20,18 @@ public:
 	Knight() {}
 	Knight(int hp) :_hp(hp) {}
 
-private:
+public:
 	int _hp;
 
 };
 
 int main()
 {
-	Knight* knight = Xnew<Knight>(100);
 
-	Xdelete(knight);
+	{
+		Knight* knight = Xnew<Knight>(100);
+		Xdelete(knight);
+		knight->_hp = 100;
+	}
 }
 
