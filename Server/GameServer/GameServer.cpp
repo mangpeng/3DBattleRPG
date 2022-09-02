@@ -2,6 +2,7 @@
 #include <iostream>
 
 #include "ThreadManager.h"
+#include "Memory.h"
 
 #include <winsock2.h>
 #include <mswsock.h>
@@ -12,28 +13,22 @@
 #include "PlayerManager.h"
 #include "AccountManager.h"
 
+
+class Knight
+{
+public:
+	Knight() {}
+	Knight(int hp) :_hp(hp) {}
+
+private:
+	int _hp;
+
+};
+
 int main()
 {
-	GThreadManager->Launch([=]
-		{
-			while (true)
-			{
-				cout << "PlayerThenAccount" << endl;
-				GPlayerManager.PlayerThenAccount();
-				this_thread::sleep_for(100ms);
-			}
-		});
+	Knight* knight = Xnew<Knight>(100);
 
-	GThreadManager->Launch([=]
-		{
-			while (true)
-			{
-				cout << "AccountThenPlayer" << endl;
-				GAccountManager.AccountThenPlayer();
-				this_thread::sleep_for(100ms);
-			}
-		});
-
-	GThreadManager->Join();
+	Xdelete(knight);
 }
 
