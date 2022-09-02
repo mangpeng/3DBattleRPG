@@ -12,6 +12,7 @@
 
 #include "PlayerManager.h"
 #include "AccountManager.h"
+#include "Allocator.h"
 
 
 class Knight
@@ -27,11 +28,6 @@ public:
 
 int main()
 {
-
-	{
-		Knight* knight = Xnew<Knight>(100);
-		Xdelete(knight);
-		knight->_hp = 100;
-	}
+	
 }
 
