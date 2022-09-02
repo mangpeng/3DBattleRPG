@@ -18,7 +18,15 @@
 class Knight
 {
 public:
-	Knight() {}
+	Knight() 
+	{
+		cout << "Knight()" << endl;
+	}
+	~Knight()
+	{
+		cout << "~Knight()" << endl;
+	}
+
 	Knight(int hp) :_hp(hp) {}
 
 public:
@@ -28,6 +36,22 @@ public:
 
 int main()
 {
-	
+	for (int32 i = 0; i < 5; i++)
+	{
+		GThreadManager->Launch([]()
+			{
+				while (true)
+				{
+					Xvector<Knight> v(10);
+
+					Xmap<int32, Knight> m;
+					m[100] = Knight();
+
+					this_thread::sleep_for(10ms);
+				}
+			});
+	}
+
+	GThreadManager->Join();
 }
 

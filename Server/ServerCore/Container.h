@@ -14,16 +14,16 @@
 using namespace std;
 
 template<typename T>
-using Xvector = vector<T, StlAllocator<Type>>;
+using Xvector = vector<T, StlAllocator<T>>;
 
 template<typename T>
-using Xlist = list<T, StlAllocator<Type>>;
+using Xlist = list<T, StlAllocator<T>>;
 
 template<typename K, typename V, typename Pred = less<K>>
 using Xmap = map<K, V, Pred, StlAllocator<pair<const K, V>>>;
 
 template<typename K, typename Pred = less<K>>
-using Xset = set<K, Pred, StlAllocator<pair<K>>>;
+using Xset = set<K, Pred, StlAllocator<K>>;
 
 template<typename T>
 using Xdeque = deque<T, StlAllocator<T>>;
