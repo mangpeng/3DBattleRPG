@@ -33,7 +33,8 @@ public:
 
 private:
 	int32 _allocSize = 0;
-	atomic<int32> _allocCount = 0; // 디버그용
+	atomic<int32> _useCount = 0; // 디버그용
+	atomic<int32> _reserveCount = 0; // 디버그용
 
 
 	USE_LOCK;

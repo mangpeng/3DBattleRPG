@@ -10,32 +10,37 @@
 #pragma comment(lib, "ws2_32.lib")
 
 
-#include "PlayerManager.h"
-#include "AccountManager.h"
 #include "Allocator.h"
 
 
 class Knight
 {
 public:
-	Knight() 
-	{
-		cout << "Knight()" << endl;
-	}
-	~Knight()
-	{
-		cout << "~Knight()" << endl;
-	}
+	int _hp = rand() % 1000;
+};
 
-	Knight(int hp) :_hp(hp) {}
-
+class Monster
+{
 public:
-	int _hp;
-
+	int64 _id = 0;
 };
 
 int main()
 {
+	Knight* knights[100];
+	for (int32 i = 0; i < 100; i++)
+		knights[i] = ObjectPool<Knight>::Pop();
+
+	for (int32 i = 0; i < 100; i++)
+	{
+		ObjectPool<Knight>::Push(knights[i]);
+		knights[i] = nullptr;
+	}
+
+	shared_ptr<Knight> sptr = ObjectPool<Knight>::MakeShared();
+	auto sptr2 = MakeShared<Knight>();
+
+
 	for (int32 i = 0; i < 5; i++)
 	{
 		GThreadManager->Launch([]()

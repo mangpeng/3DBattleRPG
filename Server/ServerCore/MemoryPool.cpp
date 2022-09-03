@@ -23,7 +23,8 @@ void MemoryPool::Push(MemoryHeader* ptr)
 	// pool에 메모리 반남
 	_queue.push(ptr);
 
-	_allocCount.fetch_sub(1);
+	_useCount.fetch_sub(1);
+	_reserveCount.fetch_add(1);
 }
 
 MemoryHeader* MemoryPool::Pop()
@@ -48,9 +49,10 @@ MemoryHeader* MemoryPool::Pop()
 	else
 	{
 		ASSERT_CRASH(header->allocSize == 0);
+		_reserveCount.fetch_sub(1);
 	}
 
-	_allocCount.fetch_add(1);
+	_useCount.fetch_add(1);
 
 	return header;
 }

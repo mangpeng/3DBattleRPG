@@ -33,7 +33,7 @@ private:
 template<typename Type, typename... Args>
 Type* Xnew(Args&&... args)
 {
-	Type* memory = static_cast<Type*>(Xalloc(sizeof(Type)));
+	Type* memory = static_cast<Type*>(PoolAllocator::Alloc(sizeof(Type)));
 
 	// 메모리가 할당된 객체의 생성자를 호출 하는 방법. placement new
 	new(memory)Type(std::forward<Args>(args)...);
@@ -46,5 +46,11 @@ template<typename Type>
 void Xdelete(Type* obj)
 {
 	obj->~Type();
-	Xrelease(obj);
+	PoolAllocator::Release(obj);
+}
+
+template<typename Type>
+shared_ptr<Type> MakeShared()
+{
+	return shared_ptr<Type>{ Xnew<Type>(), Xdelete};
 }
