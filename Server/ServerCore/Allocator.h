@@ -56,5 +56,4 @@ public:
 	{
 		PoolAllocator::Release(ptr);
 	}
-
 };
