@@ -3,7 +3,7 @@
 #include "Service.h"
 #include "Session.h"
 
-BYTE sendBuffer[] = "Hello World";
+BYTE sendData[] = "Hello World";
 
 class ServerSession : public Session
 {
@@ -16,7 +16,10 @@ public:
 	virtual void OnConnected() override
 	{
 		cout << "Connected to Server" << endl;
-		Send(sendBuffer, len32(sendBuffer));
+
+		SendBufferRef sendBuffer = MakeShared<SendBuffer>(4096);
+		sendBuffer->CopyData(sendData, sizeof(sendData));
+		Send(sendBuffer);
 	}
 
 	virtual void OnDisconnected() override
@@ -29,7 +32,10 @@ public:
 
 		this_thread::sleep_for(1s);
 
-		Send(sendBuffer, len32(sendBuffer));
+		SendBufferRef sendBuffer = MakeShared<SendBuffer>(4096);
+		sendBuffer->CopyData(sendData, sizeof(sendData));
+		Send(sendBuffer);
+
 		return len;
 	}
 
@@ -47,11 +53,11 @@ int main()
 		NetAddress(L"127.0.0.1", 7777),
 		MakeShared<IocpCore>(),
 		MakeShared<ServerSession>, // TODO : SessionManager에서 관리 필요
-		1);
+		5);
 
 	ASSERT_CRASH(service->Start());
 
-	for (int32 i = 0; i < 2; i++)
+	for (int32 i = 0; i < 5; i++)
 	{
 		GThreadManager->Launch([=]()
 			{

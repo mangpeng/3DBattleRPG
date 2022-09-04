@@ -13,31 +13,48 @@ Session::~Session()
 	SocketUtils::Close(_socket);
 }
 
-void Session::Send(BYTE* buffer, int32 len)
+void Session::Send(SendBufferRef sendBuffer)
 {
-	// 문제 : recv와 다르게 send는 언제 어디서(멀티스레드)서 호출된다.
-	// 1. 버퍼 관리는 어떻게 할지?
-	// 2. sendEvent 관리 ? 단일? 여러개? WSASend 중첩?
+	{
+		//// 문제 : recv와 다르게 send는 언제 어디서(멀티스레드)서 호출된다.
+		//// 1. 버퍼 관리는 어떻게 할지?
+		//// 2. sendEvent 관리 ? 단일? 여러개? WSASend 중첩?
 
-	// TEMP
-	SendEvent* sendEvent = Xnew<SendEvent>();
-	sendEvent->owner = shared_from_this(); // add ref
-	sendEvent->buffer.resize(len);
-	::memcpy(sendEvent->buffer.data(), buffer, len);
+		//// TEMP
+		//SendEvent* sendEvent = Xnew<SendEvent>();
+		//sendEvent->owner = shared_from_this(); // add ref
+		//sendEvent->buffer.resize(len);
+		//::memcpy(sendEvent->buffer.data(), buffer, len);
 
 
-	WRITE_LOCK; 
-	// WSASend함수가 thread-unsafe 하다.
-	// WSASend는 thread-unsafe 하기 떄문에 관리필요.
-	// 1.
-	// WSASend까지는 순서 보장이 되나(pending 되거나 하면서)
-	// 워커 스레드에 의해 GetQueuedCompletionStatus 되는 시점은 순서를 보장할 수없다.
-	// 2.
-	// pending이 뜬다는건 이미 커널 sendbuffer가 꽉 찼다는 것을 의미하는데
-	// 이떄 계속해서 send하는 것이 옳은 일인가?
-	// 3.
-	// scatter->gather를 이용하여 wsabuf를 모아서 보내는 것이 효과적이다.
-	RegisterSend(sendEvent);
+		//WRITE_LOCK; 
+		//// WSASend함수가 thread-unsafe 하다.
+		//// WSASend는 thread-unsafe 하기 떄문에 관리필요.
+		//// 1.
+		//// WSASend까지는 순서 보장이 되나(pending 되거나 하면서)
+		//// 워커 스레드에 의해 GetQueuedCompletionStatus 되는 시점은 순서를 보장할 수없다.
+		//// 2.
+		//// pending이 뜬다는건 이미 커널 sendbuffer가 꽉 찼다는 것을 의미하는데
+		//// 이떄 계속해서 send하는 것이 옳은 일인가?
+		//// 3.
+		//// scatter->gather를 이용하여 wsabuf를 모아서 보내는 것이 효과적이다.
+		//RegisterSend(sendEvent);
+	}
+
+
+	{
+		// 콘텐츠에서 send를 동시에 호출하여 무작정 WSASend가 호출되게 하지 않고
+		// register -> send -> process -> queue 보낼 데이터가 남아 있다면 다시 -> register 와 같은
+		// 멀티 스레드에서 하나의 queue에 일감을 던지고, send 흐름은 하나로 유지
+
+		WRITE_LOCK;
+
+		_sendQueue.push(sendBuffer);
+		if (_sendRegistered.exchange(true) == false)
+			RegisterSend();
+	}
+
+
 }
 
 bool Session::Connect()
@@ -77,7 +94,7 @@ void Session::Dispatch(IocpEvent* iocpEvent, int32 numOfBytes)
 		ProcessRecv(numOfBytes);
 		break;
 	case EventType::Send:
-		ProcessSend(static_cast<SendEvent*>(iocpEvent), numOfBytes);
+		ProcessSend(numOfBytes);
 		break;
 	default:
 		break;
@@ -163,27 +180,51 @@ void Session::RegisterRecv()
 
 }
 
-void Session::RegisterSend(SendEvent* sendEvent)
+void Session::RegisterSend()
 {
 	if (IsConnected() == false)
 		return;
 
+	_sendEvent.Init();
+	_sendEvent.owner = shared_from_this(); // add ref
 
-	WSABUF wsaBuf;
-	wsaBuf.buf = (char*)sendEvent->buffer.data();
-	wsaBuf.len = (ULONG)sendEvent->buffer.size();
+	// 보낼 데이터를 sendEvent에 등록
+	{
+		WRITE_LOCK;
+		
+		int32 writeSize = 0;
+		while (_sendQueue.empty() == false)
+		{
+			SendBufferRef sendBuffer = _sendQueue.front();
+
+			writeSize += sendBuffer->WriteSize();
+			// TODO 데이터가 너무 많을 경우 예외 처리
+			_sendQueue.pop();
+			_sendEvent.sendBuffers.push_back(sendBuffer);
+		}
+	}
+
+	// scatter-gather
+	Xvector<WSABUF> wsaBufs;
+	wsaBufs.reserve(_sendEvent.sendBuffers.size());
+	for (SendBufferRef sendBuffer : _sendEvent.sendBuffers)
+	{
+		WSABUF wsaBuf;
+		wsaBuf.buf = reinterpret_cast<char*>(sendBuffer->Buffer());
+		wsaBuf.len = (ULONG)sendBuffer->WriteSize();
+		wsaBufs.push_back(wsaBuf);
+	}
 
 	DWORD numOfBytes = 0;
-	DWORD flags = 0;
-
-	if (SOCKET_ERROR == ::WSASend(_socket, &wsaBuf, 1, OUT & numOfBytes, 0, reinterpret_cast<OVERLAPPED*>(sendEvent), nullptr))
+	if (SOCKET_ERROR == ::WSASend(_socket, wsaBufs.data(), static_cast<DWORD>(wsaBufs.size()), OUT & numOfBytes, 0, reinterpret_cast<OVERLAPPED*>(&_sendEvent), nullptr))
 	{
 		int32 errorCode = ::WSAGetLastError();
 		if (errorCode != WSA_IO_PENDING)
 		{
 			HandleError(errorCode);
-			sendEvent->owner = nullptr; // sub ref count
-			Xdelete(sendEvent);
+			_sendEvent.owner = nullptr; // sub ref count
+			_sendEvent.sendBuffers.clear(); // sub ref count
+			_sendRegistered.store(false);
 		}
 	}
 }
@@ -236,10 +277,10 @@ void Session::ProcessRecv(int32 numOfBytes)
 	RegisterRecv();
 }
 
-void Session::ProcessSend(SendEvent* sendEvent, int32 numOfBytes)
+void Session::ProcessSend(int32 numOfBytes)
 {
-	sendEvent->owner = nullptr; // sub ref count;
-	Xdelete(sendEvent);
+	_sendEvent.owner = nullptr; // sub ref
+	_sendEvent.sendBuffers.clear(); // sub ref 
 
 	if (numOfBytes == 0)
 	{
@@ -248,6 +289,12 @@ void Session::ProcessSend(SendEvent* sendEvent, int32 numOfBytes)
 	}
 
 	OnSend(numOfBytes);
+
+	WRITE_LOCK;
+	if(_sendQueue.empty())
+		_sendRegistered.store(false);
+	else // send가 처리되는 동안 다시 일감이 쌓인 경우
+		RegisterSend();
 }
 
 void Session::HandleError(int32 errorCode)

@@ -10,7 +10,9 @@ void Lock::WriteLock(const char* name)
 #endif
 
 	// 동일한 쓰레드가 소유하고 있다면 무조건 성공.
-	const int lockThreadId = _lockFlag.load() & WRITE_THREAD_MASK >> 16;
+	const uint32 a = _lockFlag.load();
+	const uint32 b = _lockFlag.load() & WRITE_THREAD_MASK;
+	const uint32 lockThreadId = (_lockFlag.load() & WRITE_THREAD_MASK) >> 16;
 	if (LThreadId == lockThreadId)
 	{
 		_writeCount++;
@@ -34,7 +36,7 @@ void Lock::WriteLock(const char* name)
 
 		uint64 elapsedTime = GetTickCount64() - beginTick;
 		if (elapsedTime >= ACQUIRE_TIMEOUT_TICK)
-			CRASH("Lock Time out");
+				CRASH("Lock Time out");
 
 		this_thread::yield();
 	}
