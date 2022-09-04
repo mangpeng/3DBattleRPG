@@ -79,6 +79,7 @@ int main()
 			}
 			else
 			{
+				cout << "Error : " << ::WSAGetLastError() << endl;
 				break;
 			}
 		}

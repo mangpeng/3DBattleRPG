@@ -6,11 +6,19 @@
 #include "ThreadManager.h"
 #include "Listener.h"
 
+#include "Service.h"
+#include "Session.h"
+
 int main()
 {
+	ServerServiceRef service = MakeShared<ServerService>(
+		NetAddress(L"127.0.0.1", 7777),
+		MakeShared<IocpCore>(),
+		MakeShared<Session>, // TODO : SessionManager에서 관리 필요
+		100);
 
-	Listener listener;
-	listener.StartAccept(NetAddress(L"127.0.0.1", 7777));
+
+	ASSERT_CRASH(service->Start());
 
 	for (int32 i = 0; i < 5; i++)
 	{
@@ -18,12 +26,10 @@ int main()
 			{
 				while(true)
 				{
-					GIocpCore.Dispatch();
+					service->GetIocpCore()->Dispatch();
 				}
 			});
 	}
-
-
 
 	GThreadManager->Join();
 
