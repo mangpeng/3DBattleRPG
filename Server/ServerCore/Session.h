@@ -17,6 +17,7 @@ public:
 
 public:
 	void					Send(BYTE* buffer, int32 len);
+	bool					Connect();
 	void					Disconnect(const WCHAR* cause);
 
 	shared_ptr<Service>		GetService() { return _service.lock(); }
@@ -36,18 +37,20 @@ private:
 private:
 					// 서버의 경우 바로 연결 완료되면 바로 ProcessConnect를 호출 하지만,
 					// 클라이언트 서비스의 경우 직접 connect를 등록 할 수 있다.
-	void			RegisterConnect();  
+	bool			RegisterConnect();
+	bool			RegisterDisconnect();
 	void			RegisterRecv();
 	void			RegisterSend(SendEvent* sendEvent);
 
 	void			ProcessConnect();
+	void			ProcessDisconnect();
 	void			ProcessRecv(int32 numOfBytes);
 	void			ProcessSend(SendEvent* sendEvent, int32 numOfBytes);
 
 	void			HandleError(int32 errorCode);
 
 protected:
-					/* 컨텐츠 코드에서 오버로딩 */
+					/* 컨텐츠 코드에서 오버라이딩 */
 	virtual	void	OnConnected() {}
 	virtual int32	OnRecv(BYTE* buffer, int32 len) { return len; }
 	virtual void	OnSend(int32 len) {}
@@ -71,8 +74,8 @@ private:
 
 private:
 	// iocpEvent 재사용
+	ConnectEvent		_connectEvent;
+	DisconnectEvent		_disconnectEvent;
 	RecvEvent			_recvEvent;
-
-	
 };
 

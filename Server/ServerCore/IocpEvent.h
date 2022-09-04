@@ -3,6 +3,7 @@
 enum class EventType : uint8
 {
 	Connect,
+	Disconnect,
 	Accept,
 	//PreRecv, // 제로 바이트 recv와 관련된 고급 기법에 사용된다.
 	Recv,
@@ -28,6 +29,12 @@ class ConnectEvent : public IocpEvent
 {
 public:
 	ConnectEvent() : IocpEvent(EventType::Connect) {}
+};
+
+class DisconnectEvent : public IocpEvent
+{
+public:
+	DisconnectEvent() : IocpEvent(EventType::Disconnect) {}
 };
 
 

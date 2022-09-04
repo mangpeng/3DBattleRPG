@@ -1,17 +1,26 @@
 #include "pch.h"
-#include <iostream>
-#include "CorePch.h"
-
-#include "SocketUtils.h"
 #include "ThreadManager.h"
-#include "Listener.h"
-
 #include "Service.h"
 #include "Session.h"
 
-class GameSession : public Session 
+class ClientSession : public Session 
 {
 public:
+	~ClientSession()
+	{
+		cout << "~ClientSession" << endl;
+	}
+
+	virtual void OnConnected() override
+	{
+		cout << "Connected to Server" << endl;
+	}
+
+	virtual void OnDisconnected() override
+	{
+		cout << "Disconnected from Server" << endl;
+	}
+
 	virtual int32 OnRecv(BYTE* buffer, int32 len) override
 	{
 		cout << "OnRecv Len = " << len << endl;
@@ -30,7 +39,7 @@ int main()
 	ServerServiceRef service = MakeShared<ServerService>(
 		NetAddress(L"127.0.0.1", 7777),
 		MakeShared<IocpCore>(),
-		MakeShared<GameSession>, // TODO : SessionManager에서 관리 필요
+		MakeShared<ClientSession>, // TODO : SessionManager에서 관리 필요
 		100);
 
 
@@ -49,5 +58,4 @@ int main()
 
 	GThreadManager->Join();
 
-	return 0;
 }

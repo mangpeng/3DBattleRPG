@@ -40,6 +40,11 @@ void Session::Send(BYTE* buffer, int32 len)
 	RegisterSend(sendEvent);
 }
 
+bool Session::Connect()
+{
+	return RegisterConnect();
+}
+
 void Session::Disconnect(const WCHAR* cause)
 {
 	if (_connected.exchange(false) == false)
@@ -47,9 +52,10 @@ void Session::Disconnect(const WCHAR* cause)
 
 	wcout << "Disconnect : " << cause << endl;
 
-	OnDisconnected(); // 컨텐츠 코드에서 오버로딩
-	SocketUtils::Close(_socket);
+	OnDisconnected(); // 컨텐츠 코드에서 오버라이딩
 	GetService()->ReleaseSession(GetSessionRef());
+
+	RegisterDisconnect();
 }
 
 HANDLE Session::GetHandle()
@@ -64,6 +70,9 @@ void Session::Dispatch(IocpEvent* iocpEvent, int32 numOfBytes)
 	case EventType::Connect:
 		ProcessConnect();
 		break;
+	case EventType::Disconnect:
+		ProcessDisconnect();
+		break;
 	case EventType::Recv:
 		ProcessRecv(numOfBytes);
 		break;
@@ -75,8 +84,57 @@ void Session::Dispatch(IocpEvent* iocpEvent, int32 numOfBytes)
 	}
 }
 
-void Session::RegisterConnect()
+bool Session::RegisterConnect()
 {
+	if (IsConnected())
+		return false;
+
+	if (GetService()->GetServiceType() != ServiceType::Client)
+		return false;
+
+	if (SocketUtils::SetReuseAddress(_socket, true) == false)
+		return false;
+
+	if (SocketUtils::BindAnyAddress(_socket, /*남은거*/ 0) == false)
+		return false;
+
+
+	_connectEvent.Init();
+	_connectEvent.owner = shared_from_this(); // add ref
+
+	DWORD numOfBytes = 0;
+	SOCKADDR_IN sockAddr = GetService()->GetNetAddress().GetSockAddr();
+	if (false == SocketUtils::ConnectEx(_socket, reinterpret_cast<SOCKADDR*>(&sockAddr), sizeof(sockAddr), nullptr, 0, &numOfBytes, &_connectEvent))
+	{
+		int32 erroCode = ::WSAGetLastError();
+		if (erroCode != WSA_IO_PENDING)
+		{
+			_connectEvent.owner = nullptr; // sub ref;
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool Session::RegisterDisconnect()
+{
+	_disconnectEvent.Init();
+	_disconnectEvent.owner = shared_from_this();
+
+	// TF_REUSE_SOCKET: 사용시 AcceptEx, ConnectEx시 해당 소켓을 재사용할 수 있다.
+	// https://docs.microsoft.com/en-us/previous-versions/windows/desktop/legacy/ms737757(v=vs.85)
+	if (false == SocketUtils::DisconnectEx(_socket, &_disconnectEvent, TF_REUSE_SOCKET, 0))
+	{
+		int32 erroCode = ::WSAGetLastError();
+		if (erroCode != WSA_IO_PENDING)
+		{
+			_disconnectEvent.owner = nullptr; // sub ref
+			return false;
+		}
+	}
+
+	return true;
 }
 
 void Session::RegisterRecv()
@@ -132,6 +190,7 @@ void Session::RegisterSend(SendEvent* sendEvent)
 
 void Session::ProcessConnect()
 {
+	_connectEvent.owner = nullptr;  // sub ref
 	_connected.store(true);
 
 	GetService()->AddSession(GetSessionRef());
@@ -139,6 +198,11 @@ void Session::ProcessConnect()
 	OnConnected();
 
 	RegisterRecv();
+}
+
+void Session::ProcessDisconnect()
+{
+	_disconnectEvent.owner = nullptr;
 }
 
 void Session::ProcessRecv(int32 numOfBytes)

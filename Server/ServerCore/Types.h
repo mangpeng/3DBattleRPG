@@ -23,6 +23,7 @@ using IocpCoreRef		= std::shared_ptr<class IocpCore>;
 using IocpObjectRef		= std::shared_ptr<class IocpObject>;
 using SessionRef		= std::shared_ptr<class Session>;
 using ListenerRef		= std::shared_ptr<class Listener>;
+using ClientServiceRef	= std::shared_ptr<class ClientService>;
 using ServerServiceRef	= std::shared_ptr<class ServerService>;
 
 #define size16(val) static_cast<int16>(sizeof(val))
