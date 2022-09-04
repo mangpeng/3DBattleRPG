@@ -16,6 +16,7 @@ public:
 	virtual ~Session();
 
 public:
+	void					Send(BYTE* buffer, int32 len);
 	void					Disconnect(const WCHAR* cause);
 
 	shared_ptr<Service>		GetService() { return _service.lock(); }
@@ -37,11 +38,11 @@ private:
 					// 클라이언트 서비스의 경우 직접 connect를 등록 할 수 있다.
 	void			RegisterConnect();  
 	void			RegisterRecv();
-	void			RegisterSend();
+	void			RegisterSend(SendEvent* sendEvent);
 
 	void			ProcessConnect();
 	void			ProcessRecv(int32 numOfBytes);
-	void			ProcessSend(int32 numOfBytes);
+	void			ProcessSend(SendEvent* sendEvent, int32 numOfBytes);
 
 	void			HandleError(int32 errorCode);
 
@@ -53,7 +54,7 @@ protected:
 	virtual void	OnDisconnected() {}
 
 public:
-	char _recvBuffer[1000];
+	BYTE _recvBuffer[1000];
 
 private:
 	weak_ptr<Service>		_service; // 서버거 종료하지 않는 이상 service는 존재
@@ -71,5 +72,7 @@ private:
 private:
 	// iocpEvent 재사용
 	RecvEvent			_recvEvent;
+
+	
 };
 

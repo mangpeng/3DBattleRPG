@@ -13,6 +13,33 @@ Session::~Session()
 	SocketUtils::Close(_socket);
 }
 
+void Session::Send(BYTE* buffer, int32 len)
+{
+	// 문제 : recv와 다르게 send는 언제 어디서(멀티스레드)서 호출된다.
+	// 1. 버퍼 관리는 어떻게 할지?
+	// 2. sendEvent 관리 ? 단일? 여러개? WSASend 중첩?
+
+	// TEMP
+	SendEvent* sendEvent = Xnew<SendEvent>();
+	sendEvent->owner = shared_from_this(); // add ref
+	sendEvent->buffer.resize(len);
+	::memcpy(sendEvent->buffer.data(), buffer, len);
+
+
+	WRITE_LOCK; 
+	// WSASend함수가 thread-unsafe 하다.
+	// WSASend는 thread-unsafe 하기 떄문에 관리필요.
+	// 1.
+	// WSASend까지는 순서 보장이 되나(pending 되거나 하면서)
+	// 워커 스레드에 의해 GetQueuedCompletionStatus 되는 시점은 순서를 보장할 수없다.
+	// 2.
+	// pending이 뜬다는건 이미 커널 sendbuffer가 꽉 찼다는 것을 의미하는데
+	// 이떄 계속해서 send하는 것이 옳은 일인가?
+	// 3.
+	// scatter->gather를 이용하여 wsabuf를 모아서 보내는 것이 효과적이다.
+	RegisterSend(sendEvent);
+}
+
 void Session::Disconnect(const WCHAR* cause)
 {
 	if (_connected.exchange(false) == false)
@@ -41,7 +68,7 @@ void Session::Dispatch(IocpEvent* iocpEvent, int32 numOfBytes)
 		ProcessRecv(numOfBytes);
 		break;
 	case EventType::Send:
-		ProcessSend(numOfBytes);
+		ProcessSend(static_cast<SendEvent*>(iocpEvent), numOfBytes);
 		break;
 	default:
 		break;
@@ -72,14 +99,35 @@ void Session::RegisterRecv()
 		if (errorCode != WSA_IO_PENDING) // 팬딩 에러가 아니면 문제 있는 상황
 		{
 			HandleError(errorCode);
-			_recvEvent.owner = nullptr; // sub ref count
+			_recvEvent.owner = nullptr; // sub ref 
 		}
 	}
 
 }
 
-void Session::RegisterSend()
+void Session::RegisterSend(SendEvent* sendEvent)
 {
+	if (IsConnected() == false)
+		return;
+
+
+	WSABUF wsaBuf;
+	wsaBuf.buf = (char*)sendEvent->buffer.data();
+	wsaBuf.len = (ULONG)sendEvent->buffer.size();
+
+	DWORD numOfBytes = 0;
+	DWORD flags = 0;
+
+	if (SOCKET_ERROR == ::WSASend(_socket, &wsaBuf, 1, OUT & numOfBytes, 0, reinterpret_cast<OVERLAPPED*>(sendEvent), nullptr))
+	{
+		int32 errorCode = ::WSAGetLastError();
+		if (errorCode != WSA_IO_PENDING)
+		{
+			HandleError(errorCode);
+			sendEvent->owner = nullptr; // sub ref count
+			Xdelete(sendEvent);
+		}
+	}
 }
 
 void Session::ProcessConnect()
@@ -103,12 +151,23 @@ void Session::ProcessRecv(int32 numOfBytes)
 		return;
 	}
 
-	cout << "Recv Data Len = " << numOfBytes << endl;
+	OnRecv(_recvBuffer, numOfBytes);
+
 	RegisterRecv();
 }
 
-void Session::ProcessSend(int32 numOfBytes)
+void Session::ProcessSend(SendEvent* sendEvent, int32 numOfBytes)
 {
+	sendEvent->owner = nullptr; // sub ref count;
+	Xdelete(sendEvent);
+
+	if (numOfBytes == 0)
+	{
+		Disconnect(L"Send 0");
+		return;
+	}
+
+	OnSend(numOfBytes);
 }
 
 void Session::HandleError(int32 errorCode)
