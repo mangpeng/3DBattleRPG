@@ -3,6 +3,9 @@
 #include "SocketUtils.h"
 #include "Service.h"
 
+
+#pragma region Session
+
 Session::Session() : _recvBuffer(BUFFER_SIZE)
 {
 	_socket = SocketUtils::CreateSocket();
@@ -15,6 +18,9 @@ Session::~Session()
 
 void Session::Send(SendBufferRef sendBuffer)
 {
+	if (IsConnected() == false)
+		return;
+
 	{
 		//// 문제 : recv와 다르게 send는 언제 어디서(멀티스레드)서 호출된다.
 		//// 1. 버퍼 관리는 어떻게 할지?
@@ -42,19 +48,34 @@ void Session::Send(SendBufferRef sendBuffer)
 	}
 
 
+	//{
+	//	// 콘텐츠에서 send를 동시에 호출하여 무작정 WSASend가 호출되게 하지 않고
+	//	// register -> send -> process -> queue 보낼 데이터가 남아 있다면 다시 -> register 와 같은
+	//	// 멀티 스레드에서 하나의 queue에 일감을 던지고, send 흐름은 하나로 유지
+
+	//	WRITE_LOCK;
+
+	//	_sendQueue.push(sendBuffer);
+	//	if (_sendRegistered.exchange(true) == false)
+	//		RegisterSend();
+	//}
+
 	{
-		// 콘텐츠에서 send를 동시에 호출하여 무작정 WSASend가 호출되게 하지 않고
-		// register -> send -> process -> queue 보낼 데이터가 남아 있다면 다시 -> register 와 같은
-		// 멀티 스레드에서 하나의 queue에 일감을 던지고, send 흐름은 하나로 유지
+		// lock의 범위를 줄이자!
+		bool registerSend = false;
 
-		WRITE_LOCK;
+		{
+			WRITE_LOCK;
 
-		_sendQueue.push(sendBuffer);
-		if (_sendRegistered.exchange(true) == false)
+			_sendQueue.push(sendBuffer);
+
+			if (_sendRegistered.exchange(true) == false)
+				registerSend = true;
+		}
+
+		if(registerSend)
 			RegisterSend();
 	}
-
-
 }
 
 bool Session::Connect()
@@ -68,9 +89,6 @@ void Session::Disconnect(const WCHAR* cause)
 		return;
 
 	wcout << "Disconnect : " << cause << endl;
-
-	OnDisconnected(); // 컨텐츠 코드에서 오버라이딩
-	GetService()->ReleaseSession(GetSessionRef());
 
 	RegisterDisconnect();
 }
@@ -244,6 +262,10 @@ void Session::ProcessConnect()
 void Session::ProcessDisconnect()
 {
 	_disconnectEvent.owner = nullptr;
+
+	OnDisconnected(); // 컨텐츠 코드에서 오버라이딩
+	GetService()->ReleaseSession(GetSessionRef());
+
 }
 
 // recv는 register->Check CP -> Process -> register
@@ -312,3 +334,44 @@ void Session::HandleError(int32 errorCode)
 		break;
 	}
 }
+
+#pragma endregion
+
+#pragma region PacketSession
+
+PacketSession::PacketSession()
+{
+}
+
+PacketSession::~PacketSession()
+{
+}
+
+int32 PacketSession::OnRecv(BYTE* buffer, int32 len)
+{
+	int32 processLen = 0;
+
+	while (true)
+	{
+		int32 dataSzie = len - processLen;
+
+		// 최소한의 헤더는 파싱 가능한지
+		if (dataSzie < sizeof(PacketHeader))
+			break;
+
+		PacketHeader header = *(reinterpret_cast<PacketHeader*>(buffer + processLen));
+
+		// 헤더에 기록된 패킷 사이즈만큼 데이터가 왔는지
+		if (dataSzie < header.size)
+			break;
+
+		// 패킷 조립 가능
+		OnRecvPacket(buffer, header.size);
+
+		processLen += header.size;
+	}
+
+	return processLen;
+}
+
+#pragma endregion 
