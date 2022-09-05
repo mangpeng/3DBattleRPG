@@ -2,6 +2,7 @@
 
 #include "Types.h"
 #include "Allocator.h"
+#include <array>
 #include <vector>
 #include <list>
 #include <queue>
@@ -12,6 +13,9 @@
 #include <unordered_set>
 
 using namespace std;
+
+template<typename T, uint32 SIZE>
+using Xarray = array<T, SIZE>;
 
 template<typename T>
 using Xvector = vector<T, StlAllocator<T>>;

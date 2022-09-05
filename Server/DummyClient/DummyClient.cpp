@@ -17,8 +17,10 @@ public:
 	{
 		cout << "Connected to Server" << endl;
 
-		SendBufferRef sendBuffer = MakeShared<SendBuffer>(4096);
-		sendBuffer->CopyData(sendData, sizeof(sendData));
+		SendBufferRef sendBuffer = GSendBufferManager->Open(4096);
+		::memcpy(sendBuffer->Buffer(), sendData, ulen32(sendData));
+		sendBuffer->Close(ulen32(sendData));
+
 		Send(sendBuffer);
 	}
 
@@ -32,8 +34,10 @@ public:
 
 		this_thread::sleep_for(1s);
 
-		SendBufferRef sendBuffer = MakeShared<SendBuffer>(4096);
-		sendBuffer->CopyData(sendData, sizeof(sendData));
+		SendBufferRef sendBuffer = GSendBufferManager->Open(4096);
+		::memcpy(sendBuffer->Buffer(), sendData, ulen32(sendData));
+		sendBuffer->Close(ulen32(sendData));
+
 		Send(sendBuffer);
 
 		return len;
