@@ -4,6 +4,7 @@
 #include "GameSession.h"
 #include "GameSessionManager.h"
 #include "BufferWriter.h"
+#include "ServerPacketHandler.h"
 
 int main()
 {
@@ -12,7 +13,6 @@ int main()
 		MakeShared<IocpCore>(),
 		MakeShared<GameSession>, // TODO : SessionManager에서 관리 필요
 		100);
-
 
 	ASSERT_CRASH(service->Start());
 
@@ -27,27 +27,10 @@ int main()
 			});
 	}
 
-	BYTE sendData[1000] = "HelloWorld";
-
 	while (true)
 	{
-		SendBufferRef sendBuffer = GSendBufferManager->Open(4096);
-		
-		BufferWriter bw(sendBuffer->Buffer(), sendBuffer->AllocSize());
-
-		PacketHeader* header = bw.Reserve<PacketHeader>();
-
-		// uint64 : id, uint32 : hp, uint16 :: attack
-		bw << (uint64)1001 << (uint32)100 << (uint16)10;
-
-		// 가변 데이터
-		bw.Write(sendData, sizeof(sendData));
-
-		header->size = bw.WriteSize();
-		header->id = 1;
-
-		sendBuffer->Close(bw.WriteSize());
-
+		Xvector<BuffData> buffs{ BuffData{100, 1.5f} , BuffData{200, 20.3f}, BuffData{300, 0.7f} };
+		SendBufferRef sendBuffer = ServerPacketHandler::Make_STC_TEST(1001, 100, 10, buffs);
 		GSessionManager.Broadcast(sendBuffer);
 
 		this_thread::sleep_for(250ms);

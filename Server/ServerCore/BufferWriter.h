@@ -21,9 +21,6 @@ public:
 	T*			 Reserve();
 
 	template<typename T>
-	BufferWriter& operator<<(const T& src);
-
-	template<typename T>
 	BufferWriter& operator<<(T&& src);
 
 private:
@@ -44,20 +41,18 @@ inline T* BufferWriter::Reserve()
 	return ret;
 }
 
-template<typename T>
-inline BufferWriter& BufferWriter::operator<<(const T& src)
-{
-	*reinterpret_cast<T*>(&_buffer[_pos]) = src;
-	_pos += sizeof(T);
-
-	return *this;
-}
 
 template<typename T>
 inline BufferWriter& BufferWriter::operator<<(T&& src)
 {
-	*reinterpret_cast<T*>(&_buffer[_pos]) = std::move(src);
-	_pos += sizeof(T);
+	// 전달참조이기 때문에
+	// 왼값이면 const int&
+	// 오른값이면 int&& 형태로 전달됨
+	// 때문에 &를 떄야 한다.
+	using DataType = std::remove_reference_t<T>;
+
+	*reinterpret_cast<DataType*>(&_buffer[_pos]) = std::forward<DataType>(src);
+	_pos += sizeof(DataType);
 
 	return *this;
 }
