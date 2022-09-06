@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "ThreadManager.h"
 #include "Service.h"
-#include "ClientPacketHandler.h"
+#include "ServerPacketHandler.h"
 
 BYTE sendData[] = "Hello World";
 
@@ -15,13 +15,7 @@ public:
 
 	virtual void OnConnected() override
 	{
-		//cout << "Connected to Server" << endl;
 
-		//SendBufferRef sendBuffer = GSendBufferManager->Open(4096);
-		//::memcpy(sendBuffer->Buffer(), sendData, ulen32(sendData));
-		//sendBuffer->Close(ulen32(sendData));
-
-		//Send(sendBuffer);
 	}
 
 	virtual void OnDisconnected() override
@@ -30,7 +24,10 @@ public:
 
 	virtual void OnRecvPacket(BYTE* buffer, int32 len) override
 	{
-		ClientPacketHandler::HandlePacket(buffer, len);
+		PacketSessionRef session = PacketSessionRef();
+		PacketHeader* header = reinterpret_cast<PacketHeader*>(buffer);
+
+		ServerPacketHandler::HandlePacket(session, buffer, len);
 	}
 
 	virtual void OnSend(int32 len) override
@@ -41,6 +38,8 @@ public:
 
 int main()
 {
+	ServerPacketHandler::Init();
+
 	this_thread::sleep_for(1s);
 
 	ClientServiceRef service = MakeShared<ClientService>(
