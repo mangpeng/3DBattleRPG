@@ -1,32 +1,35 @@
 #pragma once
+#include "Protocol.pb.h"
 
 enum
 {
 	STC_TEST = 1
 };
 
-struct BuffData
-{
-	uint64 buffId;
-	float remainTime;
-};
-
-struct STC_TEST
-{
-	uint64 id;
-	uint32 hp;
-	uint16 attack;
-
-	// 가변 데이터
-	Xvector<BuffData> buffs;
-};
-
-
 class ServerPacketHandler
 {
 public:
 	static void HandlePacket(BYTE* buffer, int32 len);
 
-	static SendBufferRef Make_STC_TEST(uint64 id, uint32 hp, uint16 attack, Xvector<BuffData> buffs);
+	static SendBufferRef MakeSendBuffer(Protocol::S_TEST& pkt);
 };
+
+template<typename T>
+SendBufferRef _MakeSendBuffer(T& pkt, uint16 pktId)
+{
+	const uint16 dataSize = static_cast<uint16>(pkt.ByteSizeLong());
+	const uint16 packetSize = dataSize + sizeof(PacketHeader);
+
+	SendBufferRef sendBuffer = GSendBufferManager->Open(packetSize);
+
+	PacketHeader* header = reinterpret_cast<PacketHeader*>(sendBuffer->Buffer());
+	header->size = packetSize;
+	header->id = pktId;
+
+	ASSERT_CRASH(pkt.SerializeToArray(&header[1], dataSize));
+
+	sendBuffer->Close(packetSize);
+
+	return sendBuffer;
+}
 
