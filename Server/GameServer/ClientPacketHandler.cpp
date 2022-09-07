@@ -68,8 +68,9 @@ bool Handle_C_ENTER_GAME(PacketSessionRef& session, Protocol::C_ENTER_GAME& pkt)
 	uint64 index = pkt.playerindex();
 
 	PlayerRef  player = gameSession->_players[index];
-	GRoom.PushJob(MakeShared<EnterJob>(GRoom, player)); // 일감을 바로 실행하지 않고 예약
+	//GRoom.PushJob(MakeShared<EnterJob>(GRoom, player)); // 일감을 바로 실행하지 않고 예약
 	//GRoom.Enter(player); // WRITE_LOCK  job 방식으로 변경
+	GRoom.PushJob(&Room::Enter, player);
 
 	Protocol::S_ENTER_GAME enterGamePkt;
 	enterGamePkt.set_success(true);
@@ -88,8 +89,9 @@ bool Handle_C_CHAT(PacketSessionRef& session, Protocol::C_CHAT& pkt)
 	chatPkt.set_msg(pkt.msg());
 	auto sendBuffer = ClientPacketHandler::MakeSendBuffer(chatPkt);
 
-	GRoom.PushJob(MakeShared<BroadcastJob>(GRoom, sendBuffer));
+	//GRoom.PushJob(MakeShared<BroadcastJob>(GRoom, sendBuffer));
 	//GRoom.Broadcast(sendBuffer); // WRITE_LOCK
+	GRoom.PushJob(&Room::Broadcast, sendBuffer);
 
 	return true;
 }
