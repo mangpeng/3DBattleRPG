@@ -6,9 +6,18 @@
 #include "BufferWriter.h"
 #include "ClientPacketHandler.h"
 #include "Protocol.pb.h"
+#include "Job.h"
+#include "Room.h"
 
 int main()
 {
+	{
+		HealJob job;
+		job._target = 1;
+
+		job.Execute();
+	}
+
 	ClientPacketHandler::Init();
 
 	ServerServiceRef service = MakeShared<ServerService>(
@@ -30,13 +39,12 @@ int main()
 			});
 	}
 
+	// 메인 스레드가 room의 일감 처리
 	while (true)
 	{
-	
-
-		this_thread::sleep_for(250ms);
+		GRoom.FlushJob();
+		this_thread::sleep_for(1ms);
 	}
 
 	GThreadManager->Join();
-
 }

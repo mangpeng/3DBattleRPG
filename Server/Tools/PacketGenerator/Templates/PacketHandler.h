@@ -15,7 +15,7 @@ enum : uint16
 bool Handle_INVALID(PacketSessionRef& session, BYTE* buffer, int32 len);
 
 {%-for pkt in parser.recv_pkt%}
-bool Handle_{{pkt.name}}(PacketSessionRef& session, Protocol::{{pkt.name}}&pkt);
+bool Handle_{{pkt.name}}(PacketSessionRef& session, Protocol::{{pkt.name}}& pkt);
 {%-endfor%}
 
 class {{output}}
