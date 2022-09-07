@@ -23,6 +23,9 @@ bool IocpCore::Register(IocpObjectRef iocpObject)
 
 bool IocpCore::Dispatch(uint32 timeoutMs)
 {
+	// timeoutMs없이 계속 GetQueue~~~를 호출하면
+	// 스레드는 잠들게 된다. 처리할 completion i/o가 없기 때문에
+	// 타임아웃을 지정하면 잠들다가 시간이 되면 빠져 나온다.
 	DWORD numOfBytes = 0;
 	ULONG_PTR key = 0;
 	IocpEvent* iocpEvent = nullptr;
