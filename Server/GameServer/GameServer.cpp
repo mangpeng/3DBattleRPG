@@ -9,35 +9,8 @@
 #include "Job.h"
 #include "Room.h"
 
-void HealByeValue(int64 target, int32 heal)
-{
-	cout << target << " " << heal << endl;
-}
-
-class Knight
-{
-public:
-	void HealMe(int32 value)
-	{
-		cout << value << endl;
-	}
-};
-
 int main()
 {
-	{
-		FuncJob<void, int64, int32> job(HealByeValue, 100, 10);
-		job.Execute();
-	}
-
-	{
-		Knight k1;
-		MemberJob job2(&k1, &Knight::HealMe, 10);
-		job2.Execute();
-	}
-	
-
-
 	ClientPacketHandler::Init();
 
 	ServerServiceRef service = MakeShared<ServerService>(
@@ -62,7 +35,7 @@ int main()
 	// 메인 스레드가 room의 일감 처리
 	while (true)
 	{
-		GRoom.FlushJob();
+		GRoom->FlushJob();
 		this_thread::sleep_for(1ms);
 	}
 
