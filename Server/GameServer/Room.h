@@ -1,7 +1,7 @@
 #pragma once
-#include "JobSerializer.h"
+#include "JobQueue.h"
 
-class Room : public JobSerializer
+class Room : public JobQueue
 {
 public:
 
@@ -10,17 +10,9 @@ public:
 	void Leave(PlayerRef player);
 	void Broadcast(SendBufferRef sendBuffer);
 
-public:
-
-	//void FlushJob(); // 반드시 하나의 스레드에서 호출해야 함
-
-	virtual void FlushJob() override;
-
 private:
 	//USE_LOCK; job queue 사용하므로 필요 없음
 	map<uint64, PlayerRef> _players;
-
-	//JobQueue _jobs;
 };
 
 

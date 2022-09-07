@@ -32,12 +32,5 @@ int main()
 			});
 	}
 
-	// 메인 스레드가 room의 일감 처리
-	while (true)
-	{
-		GRoom->FlushJob();
-		this_thread::sleep_for(1ms);
-	}
-
 	GThreadManager->Join();
 }
