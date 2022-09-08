@@ -15,5 +15,8 @@ public:
 	virtual void OnSend(int32 len) override;
 
 public:
-	Xvector<PlayerRef> _players;
+	Xvector<PlayerRef>		 _players;
+
+	PlayerRef				_currentPlayer;
+	weak_ptr<class Room>	_room;
 };

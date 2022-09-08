@@ -67,16 +67,15 @@ bool Handle_C_ENTER_GAME(PacketSessionRef& session, Protocol::C_ENTER_GAME& pkt)
 
 	uint64 index = pkt.playerindex();
 
-	PlayerRef  player = gameSession->_players[index];
-	//GRoom.PushJob(MakeShared<EnterJob>(GRoom, player)); // 일감을 바로 실행하지 않고 예약
-	//GRoom.Enter(player); // WRITE_LOCK  job 방식으로 변경
-	//GRoom.PushJob(&Room::Enter, player);
-	GRoom->DoAsync(&Room::Enter, player);
+	gameSession->_currentPlayer = gameSession->_players[index];
+	gameSession->_room = GRoom;
+
+	GRoom->DoAsync(&Room::Enter, gameSession->_currentPlayer);
 
 	Protocol::S_ENTER_GAME enterGamePkt;
 	enterGamePkt.set_success(true);
 	auto sendBuffer = ClientPacketHandler::MakeSendBuffer(enterGamePkt);
-	player->ownerSession->Send(sendBuffer);
+	gameSession->_currentPlayer->ownerSession->Send(sendBuffer);
 
 
 	return true;
