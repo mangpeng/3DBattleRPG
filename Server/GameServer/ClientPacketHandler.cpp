@@ -3,6 +3,7 @@
 #include "Player.h"
 #include "Room.h"
 #include "GameSession.h"
+#include <iomanip>
 
 PacketHandlerFunc GPacketHandler[UINT16_MAX];
 
@@ -39,21 +40,21 @@ bool Handle_C_LOGIN(PacketSessionRef& session, Protocol::C_LOGIN& pkt)
 	}
 
 
-	{
-		// 임시 캐릭터 정보 생성
-		auto player = loginPkt.add_players();
-		player->set_name(u8"test id2");
-		player->set_playertype(Protocol::PLAYER_TYPE_MAGE);
+	//{
+	//	// 임시 캐릭터 정보 생성
+	//	auto player = loginPkt.add_players();
+	//	player->set_name(u8"test id2");
+	//	player->set_playertype(Protocol::PLAYER_TYPE_MAGE);
 
-		// 메모리에 캐릭터 정보 캐싱
-		PlayerRef playerRef = MakeShared<Player>();
-		playerRef->playerId = idGenerator++;
-		playerRef->name = player->name();
-		playerRef->type = player->playertype();
-		playerRef->ownerSession = gameSession;
+	//	// 메모리에 캐릭터 정보 캐싱
+	//	PlayerRef playerRef = MakeShared<Player>();
+	//	playerRef->playerId = idGenerator++;
+	//	playerRef->name = player->name();
+	//	playerRef->type = player->playertype();
+	//	playerRef->ownerSession = gameSession;
 
-		gameSession->_players.push_back(playerRef);
-	}
+	//	gameSession->_players.push_back(playerRef);
+	//}
 
 	auto sendBuffer = ClientPacketHandler::MakeSendBuffer(loginPkt);
 	session->Send(sendBuffer);
@@ -74,6 +75,8 @@ bool Handle_C_ENTER_GAME(PacketSessionRef& session, Protocol::C_ENTER_GAME& pkt)
 
 	Protocol::S_ENTER_GAME enterGamePkt;
 	enterGamePkt.set_success(true);
+	enterGamePkt.set_playerid(gameSession->_players[index]->playerId);
+
 	auto sendBuffer = ClientPacketHandler::MakeSendBuffer(enterGamePkt);
 	gameSession->_currentPlayer->ownerSession->Send(sendBuffer);
 
@@ -83,15 +86,16 @@ bool Handle_C_ENTER_GAME(PacketSessionRef& session, Protocol::C_ENTER_GAME& pkt)
 
 bool Handle_C_CHAT(PacketSessionRef& session, Protocol::C_CHAT& pkt)
 {
-	cout << pkt.msg() << endl;
+	cout << "Recv : ";
+	cout << "[" << setw(4) << setfill('0') << pkt.playerid();
+	cout << "] " << pkt.msg() << endl;
 
 	Protocol::S_CHAT chatPkt;
+	chatPkt.set_playerid(pkt.playerid());	
 	chatPkt.set_msg(pkt.msg());
+
 	auto sendBuffer = ClientPacketHandler::MakeSendBuffer(chatPkt);
 
-	//GRoom.PushJob(MakeShared<BroadcastJob>(GRoom, sendBuffer));
-	//GRoom.Broadcast(sendBuffer); // WRITE_LOCK
-	//GRoom.PushJob(&Room::Broadcast, sendBuffer);
 	GRoom->DoAsync(&Room::Broadcast, sendBuffer);
 
 	return true;

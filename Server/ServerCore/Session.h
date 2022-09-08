@@ -85,6 +85,10 @@ private:
 	DisconnectEvent				_disconnectEvent;
 	RecvEvent					_recvEvent;
 	SendEvent					_sendEvent;
+
+public:
+	uint64						_playerId;
+
 };
 
 #pragma endregion 

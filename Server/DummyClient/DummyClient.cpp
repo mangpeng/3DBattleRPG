@@ -49,7 +49,7 @@ int main()
 		NetAddress(L"127.0.0.1", 7777),
 		MakeShared<IocpCore>(),
 		MakeShared<ServerSession>, // TODO : SessionManager에서 관리 필요
-		1);
+		1000);
 
 	ASSERT_CRASH(service->Start());
 
@@ -64,15 +64,21 @@ int main()
 			});
 	}
 
-	Protocol::C_CHAT chatPkt;
-	chatPkt.set_msg(u8"hello");
-	auto sendBuffer = ServerPacketHandler::MakeSendBuffer(chatPkt);
 
-	while (true)
-	{
-		service->BroadCast(sendBuffer);
-		this_thread::sleep_for(1s);
-	}
+
+	//while (true)
+	//{
+	//	if (GPlayerId == 0)
+	//		continue;
+
+	//	Protocol::C_CHAT chatPkt;
+	//	chatPkt.set_playerid(GPlayerId);
+	//	chatPkt.set_msg(u8"Hello, I'm client");
+	//	auto sendBuffer = ServerPacketHandler::MakeSendBuffer(chatPkt);
+
+	//	service->BroadCast(sendBuffer);
+	//	this_thread::sleep_for(1s);
+	//}
 
 	GThreadManager->Join();
 }

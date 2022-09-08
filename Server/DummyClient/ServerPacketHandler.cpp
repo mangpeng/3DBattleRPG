@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "ServerPacketHandler.h"
+#include <iomanip>
 
 PacketHandlerFunc GPacketHandler[UINT16_MAX];
 
@@ -35,14 +36,28 @@ bool Handle_S_LOGIN(PacketSessionRef& session, Protocol::S_LOGIN& pkt)
 
 bool Handle_S_ENTER_GAME(PacketSessionRef& session, Protocol::S_ENTER_GAME& pkt)
 {
-
+	// 플레이어 아이디 캐싱
+	GPlayerId = pkt.playerid();
 
 	return true;
 }
 
 bool Handle_S_CHAT(PacketSessionRef& session, Protocol::S_CHAT& pkt)
 {
-	cout << pkt.msg() << endl;
+	cout << "Recv : " << endl;
+	cout << "[" << setw(4) << setfill('0') << pkt.playerid();
+	cout << "] " << pkt.msg() << endl;
+
+	//if (pkt.playerid() == GPlayerId)
+	//{
+	//	cout << "[" << setw(4) << "self";
+	//	cout << "] " << pkt.msg() << endl;
+	//}
+	//else
+	//{
+	//	cout << "[" << setw(4) << setfill('0') << pkt.playerid();
+	//	cout << "] " << pkt.msg() << endl;
+	//}
 
 	return true;
 }

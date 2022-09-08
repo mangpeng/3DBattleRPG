@@ -14,6 +14,8 @@ DeadLockProfiler*			GDeadLockProfiler = nullptr;
 GlobalQueue*				GGlobalQueue = nullptr;
 JobTimer*					GJobTimer = nullptr;
 
+uint64						GPlayerId = 0;
+
 class CoreGlobal
 {
 public:
