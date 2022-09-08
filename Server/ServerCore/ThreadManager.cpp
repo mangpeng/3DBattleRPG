@@ -64,3 +64,10 @@ void ThreadManager::DoGlobalQueueWork()
 
 	}
 }
+
+void ThreadManager::DistributeReservedJobs()
+{
+	const uint64 now = GetTickCount64();
+
+	GJobTimer->Distribute(now);
+}

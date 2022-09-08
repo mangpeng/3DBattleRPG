@@ -49,7 +49,7 @@ int main()
 		NetAddress(L"127.0.0.1", 7777),
 		MakeShared<IocpCore>(),
 		MakeShared<ServerSession>, // TODO : SessionManager에서 관리 필요
-		1000);
+		1);
 
 	ASSERT_CRASH(service->Start());
 
